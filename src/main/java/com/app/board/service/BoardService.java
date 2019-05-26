@@ -29,4 +29,6 @@ public interface BoardService {
 	BoardDetailDTO getBoardsByBoardId(Integer boardId);
 
 	List<ViewMessageDTO> getMessagesBySimNumber(Integer boardId);
+
+	void addSms(String sim, String text);
 }

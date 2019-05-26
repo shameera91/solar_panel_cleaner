@@ -22,6 +22,8 @@ import java.util.Optional;
 public class BoardController {
 
 	private static final Logger logger = LoggerFactory.getLogger(BoardController.class);
+    private static final String WASH_NOW_TEXT = "CID";
+    private static final String COMM_CHECK_TEXT = "P.1234RECEP";
 
 	@Autowired
 	UserService userService;
@@ -30,21 +32,25 @@ public class BoardController {
 	BoardService boardService;
 
 	@PostMapping("/requestCommCheck/{boardId}")
-	public ResponseEntity<?> requestCommCheck(@PathVariable Integer boardId){
-		ApiResponse response = new ApiResponse();
-		Optional<Board> boardByIdentification = boardService.getBoardById(boardId);
+    public ResponseEntity<?> requestCommCheck(@PathVariable Integer boardId){
+        return getResponseEntity(boardId, COMM_CHECK_TEXT);
+    }
 
-		/* logic to send data to new database*/
+    private ResponseEntity<?> getResponseEntity(@PathVariable Integer boardId, String commCheckText) {
+        ApiResponse response = new ApiResponse();
+        Optional<Board> boardByIdentification = boardService.getBoardById(boardId);
 
-		if(boardByIdentification.isPresent()){
-			response.setMessage("Success");
-			response.setError(false);
-		}else{
-			response.setMessage("No such a board available");
-			response.setError(true);
-		}
-		return ResponseEntity.ok(response);
-	}
+        if(boardByIdentification.isPresent()){
+            boardService.addSms(boardByIdentification.get().getSimNumber(), commCheckText);
+
+            response.setMessage("Success");
+            response.setError(false);
+        }else{
+            response.setMessage("No such a board available");
+            response.setError(true);
+        }
+        return ResponseEntity.ok(response);
+    }
 
 
 	@PostMapping("/sendMessage/{boardId}")
@@ -52,9 +58,9 @@ public class BoardController {
 		ApiResponse response = new ApiResponse();
 		Optional<Board> board = boardService.getBoardById(boardId);
 
-		/* code to insert row into   sms  database*/
 
 		if(board.isPresent()){
+            boardService.addSms(board.get().getSimNumber(), request.getMessage());
 			response.setMessage("Success");
 			response.setError(false);
 		}else{
@@ -66,19 +72,9 @@ public class BoardController {
 
 	@PostMapping("/washNow/{boardId}")
 	public ResponseEntity<?> washNow(@PathVariable Integer boardId){
-		ApiResponse response = new ApiResponse();
-		Optional<Board> boardById = boardService.getBoardById(boardId);
+        return getResponseEntity(boardId, WASH_NOW_TEXT);
+    }
 
-		/* logic to send data to new database*/
-		if(boardById.isPresent()){
-			response.setMessage("Success");
-			response.setError(false);
-		}else{
-			response.setMessage("No such a board available");
-			response.setError(true);
-		}
-		return ResponseEntity.ok(response);
-	}
 
 	@GetMapping("/viewMessages/{boardId}")
 	public ResponseEntity<?> getMessagesForBoard(@PathVariable Integer boardId){

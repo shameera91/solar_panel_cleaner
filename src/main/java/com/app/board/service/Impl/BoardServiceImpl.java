@@ -11,6 +11,11 @@ import com.app.board.service.BoardService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.*;
 
 /**
@@ -20,145 +25,174 @@ import java.util.*;
 @Service
 public class BoardServiceImpl implements BoardService {
 
-	@Autowired
-	UserRepository userRepository;
+    @Autowired
+    UserRepository userRepository;
 
-	@Autowired
-	BoardRepository boardRepository;
+    @Autowired
+    BoardRepository boardRepository;
 
-	@Autowired
-	BoardWashDaysRepository boardWashDaysRepository;
+    @Autowired
+    BoardWashDaysRepository boardWashDaysRepository;
 
-	@Override
-	public Optional<Board> getBoardById(Integer id) {
-		return boardRepository.findById(id);
-	}
+    @Override
+    public Optional<Board> getBoardById(Integer id) {
+        return boardRepository.findById(id);
+    }
 
-	@Override
-	public Optional<Board> getBoardByIdentification(Integer boardIdentity) {
-		return boardRepository.findByBoardIdentity(boardIdentity);
-	}
+    @Override
+    public Optional<Board> getBoardByIdentification(Integer boardIdentity) {
+        return boardRepository.findByBoardIdentity(boardIdentity);
+    }
 
-	@Override
-	public void saveBoard(AddBoardRequest request) {
-		Board board = new Board();
+    @Override
+    public void saveBoard(AddBoardRequest request) {
+        Board board = new Board();
 
-		board.setBoardIdentity(request.getBoardIdentity());
-		board.setContactName(request.getContactName());
-		board.setLocation(request.getLocation());
-		board.setSimNumber(request.getSimNumber());
-		board.setWashTime(request.getWashTime());
-		board.setWaterPerWash(request.getWaterPerWash());
+        board.setBoardIdentity(request.getBoardIdentity());
+        board.setContactName(request.getContactName());
+        board.setLocation(request.getLocation());
+        board.setSimNumber(request.getSimNumber());
+        board.setWashTime(request.getWashTime());
+        board.setWaterPerWash(request.getWaterPerWash());
 
-		Integer[] users = request.getUsers();
-		Set<User> userList = new HashSet<>();
-		for(int i=0;i<users.length;i++){
-			userList.add(userRepository.findById(users[i]).get());
-		}
+        setBoardUsers(board, request);
 
-		board.setUsers(userList);
+        Board savedBoard = boardRepository.save(board);
 
-		Board savedBoard = boardRepository.save(board);
+        List<AutoWashDaysDTO> autoWashDays = request.getAutoWashDays();
+        setBoardWashDays(savedBoard, autoWashDays);
+        informServerOfWashDays(savedBoard, autoWashDays);
 
-		List<AutoWashDaysDTO> autoWashDays = request.getAutoWashDays();
-		for(AutoWashDaysDTO days:autoWashDays){
-			BoardWashDays boardWashDays = new BoardWashDays();
-			//if(days.isSelected()){
-				boardWashDays.setBoard(savedBoard);
-				boardWashDays.setDay(days.getDay());
-				boardWashDays.setSelected(days.isSelected());
-				boardWashDaysRepository.save(boardWashDays);
-			//}
+    }
 
-		}
+    private void informServerOfWashDays(Board savedBoard, List<AutoWashDaysDTO> autoWashDays) {
+        String s = savedBoard.getSimNumber();
+        String d = getDaysString(autoWashDays);
+        String h = savedBoard.getWashTime();
+        String tz = "";
+        try {
+            URL url = new URL("http://localhost:8000/set?s=" + s + "&d=" + d + "&h=" + h + "&tz=" + tz);
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("GET");
+            int responseCode = connection.getResponseCode();
 
-	}
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
-	@Override
-	public List<AllBoardDTO> getBoards(Integer userId) {
-		Optional<User> userById = userRepository.findById(userId);
-		if(userById.isPresent()){
+    }
 
-			List<Board> allBoards  = boardRepository.findAll();
-			List<Board> allBoarForUser = new ArrayList<>();
+    private String getDaysString(List<AutoWashDaysDTO> autoWashDays) {
+        String ret = "";
+        String days = "";
 
-			if(userById.get().isAdmin()){
+        for (AutoWashDaysDTO autoWashDaysDTO : autoWashDays) {
+            days += autoWashDaysDTO.getDay();
+        }
 
-				return prepareBoardDetails(allBoards);
+        ret += days.indexOf("sun") > 0 ? "1" : "0";
+        ret += days.indexOf("mon") > 0 ? "1" : "0";
+        ret += days.indexOf("tue") > 0 ? "1" : "0";
+        ret += days.indexOf("wed") > 0 ? "1" : "0";
+        ret += days.indexOf("thu") > 0 ? "1" : "0";
+        ret += days.indexOf("fri") > 0 ? "1" : "0";
+        ret += days.indexOf("sat") > 0 ? "1" : "0";
+        return ret;
+    }
 
-			 }else{
+    @Override
+    public List<AllBoardDTO> getBoards(Integer userId) {
+        Optional<User> userById = userRepository.findById(userId);
+        if (userById.isPresent()) {
 
-				for(Board b : allBoards){
-					for (User u: b.getUsers()){
-						if(u.getId() == userId){
-							allBoarForUser.add(b);
-						}
-					}
-				}
+            List<Board> allBoards = boardRepository.findAll();
+            List<Board> allBoarForUser = new ArrayList<>();
 
-				return prepareBoardDetails(allBoarForUser);
+            if (userById.get().isAdmin()) {
 
-			}
-		}else{
-			return null;
-		}
-	}
+                return prepareBoardDetails(allBoards);
 
-	@Override
-	public void editBoard(Board board,AddBoardRequest request) {
-		board.setBoardIdentity(request.getBoardIdentity());
-		board.setSimNumber(request.getSimNumber());
-		board.setContactName(request.getContactName());
-		board.setLocation(request.getLocation());
+            } else {
 
-		Integer[] userIds = request.getUsers();
-		Set<User> boardUsers = new HashSet<>();
-		for (int i=0;i<userIds.length;i++){
-			boardUsers.add(userRepository.findById(userIds[i]).get());
-		}
-		board.setUsers(boardUsers);
-		board.setWashTime(request.getWashTime());
-		board.setWaterPerWash(request.getWaterPerWash());
-		boardRepository.save(board);
+                for (Board b : allBoards) {
+                    for (User u : b.getUsers()) {
+                        if (u.getId().equals(userId)) {
+                            allBoarForUser.add(b);
+                        }
+                    }
+                }
 
-		List<AutoWashDaysDTO> autoWash = request.getAutoWashDays();
+                return prepareBoardDetails(allBoarForUser);
 
-		boardWashDaysRepository.deleteBoardWashDaysByBoardId(board.getId()); /* deleting current wash days*/
+            }
+        } else {
+            return null;
+        }
+    }
+
+    @Override
+    public void editBoard(Board board, AddBoardRequest request) {
+        board.setBoardIdentity(request.getBoardIdentity());
+        board.setSimNumber(request.getSimNumber());
+        board.setContactName(request.getContactName());
+        board.setLocation(request.getLocation());
+
+        setBoardUsers(board, request);
+        board.setWashTime(request.getWashTime());
+        board.setWaterPerWash(request.getWaterPerWash());
+        boardRepository.save(board);
+
+        List<AutoWashDaysDTO> autoWash = request.getAutoWashDays();
+
+        boardWashDaysRepository.deleteBoardWashDaysByBoardId(board.getId()); /* deleting current wash days*/
 
 
-		for(AutoWashDaysDTO days:autoWash){
-			BoardWashDays boardWashDays = new BoardWashDays();
-			//if(days.isSelected()){
-				boardWashDays.setBoard(board);
-				boardWashDays.setDay(days.getDay());
-				boardWashDays.setSelected(days.isSelected());
-				boardWashDaysRepository.save(boardWashDays);
-			//}
-		}
+        setBoardWashDays(board, autoWash);
 
-	}
+    }
 
-	@Override
-	public void deleteBoard(Board board,Integer id) {
+    private void setBoardUsers(Board board, AddBoardRequest request) {
+        Integer[] userIds = request.getUsers();
+        Set<User> boardUsers = new HashSet<>();
+        for (int i = 0; i < userIds.length; i++) {
+            boardUsers.add(userRepository.findById(userIds[i]).get());
+        }
+        board.setUsers(boardUsers);
+    }
 
-		boardRepository.delete(id);
-		boardWashDaysRepository.deleteBoardWashDaysByBoardId(board.getId());
+    private void setBoardWashDays(Board board, List<AutoWashDaysDTO> autoWash) {
+        for (AutoWashDaysDTO days : autoWash) {
+            BoardWashDays boardWashDays = new BoardWashDays();
+            //if(days.isSelected()){
+            boardWashDays.setBoard(board);
+            boardWashDays.setDay(days.getDay());
+            boardWashDays.setSelected(days.isSelected());
+            boardWashDaysRepository.save(boardWashDays);
+            //}
+        }
+    }
 
-	}
+    @Override
+    public void deleteBoard(Board board, Integer id) {
 
-	@Override
-	public BoardDetailDTO getBoardsByBoardId(Integer boardId) {
-		Board boardById = boardRepository.findById(boardId).get();
+        boardRepository.delete(id);
+        boardWashDaysRepository.deleteBoardWashDaysByBoardId(board.getId());
 
-		BoardDetailDTO detailDTO = new BoardDetailDTO();
-		detailDTO.setBoardIdentity(boardById.getBoardIdentity());
-		detailDTO.setContactName(boardById.getContactName());
-		detailDTO.setLocation(boardById.getLocation());
-		detailDTO.setSimNumber(boardById.getSimNumber());
-		detailDTO.setWashTime(boardById.getWashTime());
-		detailDTO.setWaterPerWash(boardById.getWaterPerWash());
-		detailDTO.setUsers(boardById.getUsers());
-		//AddBoardRequest boardDetails = new AddBoardRequest();
+    }
+
+    @Override
+    public BoardDetailDTO getBoardsByBoardId(Integer boardId) {
+        Board boardById = boardRepository.findById(boardId).get();
+
+        BoardDetailDTO detailDTO = new BoardDetailDTO();
+        detailDTO.setBoardIdentity(boardById.getBoardIdentity());
+        detailDTO.setContactName(boardById.getContactName());
+        detailDTO.setLocation(boardById.getLocation());
+        detailDTO.setSimNumber(boardById.getSimNumber());
+        detailDTO.setWashTime(boardById.getWashTime());
+        detailDTO.setWaterPerWash(boardById.getWaterPerWash());
+        detailDTO.setUsers(boardById.getUsers());
+        //AddBoardRequest boardDetails = new AddBoardRequest();
 
 		/*boardDetails.setBoardIdentity(boardById.getBoardIdentity());
 		boardDetails.setContactName(boardById.getContactName());
@@ -167,7 +201,7 @@ public class BoardServiceImpl implements BoardService {
 		boardDetails.setWashTime(boardById.getWashTime());
 		boardDetails.setWaterPerWash(boardById.getWaterPerWash());*/
 
-		//Set<User> users = boardById.getUsers();
+        //Set<User> users = boardById.getUsers();
 
 		/*Integer []boardIds= new Integer[users.size()]; int i=0;
 		if(!users.isEmpty()){
@@ -177,63 +211,121 @@ public class BoardServiceImpl implements BoardService {
 			}
 		}*/
 
-		//boardDetails.setUsers(boardIds);
+        //boardDetails.setUsers(boardIds);
 
-		List<BoardWashDays> boardWashDaysList = boardWashDaysRepository.findByBoardId(boardById.getId());
+        List<BoardWashDays> boardWashDaysList = boardWashDaysRepository.findByBoardId(boardById.getId());
 
-		List<AutoWashDaysDTO> autoList = new ArrayList<>();
-		for(BoardWashDays bwdays:boardWashDaysList){
-			AutoWashDaysDTO autoWashDaysDTO = new AutoWashDaysDTO();
-			autoWashDaysDTO.setDay(bwdays.getDay());
-			autoWashDaysDTO.setSelected(bwdays.getIsSelected());
-			autoList.add(autoWashDaysDTO);
-		}
+        List<AutoWashDaysDTO> autoList = new ArrayList<>();
+        for (BoardWashDays bwdays : boardWashDaysList) {
+            AutoWashDaysDTO autoWashDaysDTO = new AutoWashDaysDTO();
+            autoWashDaysDTO.setDay(bwdays.getDay());
+            autoWashDaysDTO.setSelected(bwdays.getIsSelected());
+            autoList.add(autoWashDaysDTO);
+        }
 
-		detailDTO.setAutoWashDays(autoList);
-		return detailDTO;
-	}
+        detailDTO.setAutoWashDays(autoList);
+        return detailDTO;
+    }
 
-	@Override
-	public List<ViewMessageDTO> getMessagesBySimNumber(Integer boardId) {
-		/* query the sim number and get details from other db using that sim number*/
-		List<ViewMessageDTO> messageList = new ArrayList<>();
-		ViewMessageDTO message1 = new ViewMessageDTO("Start","2019-05-21 10:23");
-		ViewMessageDTO message2 = new ViewMessageDTO("Internal Error","2019-05-21 10:23");
-		ViewMessageDTO message3 = new ViewMessageDTO("Success","2019-05-21 10:23");
-		ViewMessageDTO message4 = new ViewMessageDTO("Start","2019-05-21 11:25");
-		messageList.add(message1);
-		messageList.add(message2);
-		messageList.add(message3);
-		messageList.add(message4);
-		return messageList;
-	}
+    @Override
+    public List<ViewMessageDTO> getMessagesBySimNumber(Integer boardId) {
+        /* query the sim number and get details from other db using that sim number*/
+        List<ViewMessageDTO> messageList = null;
+        try {
+            String sim = getBoardById(boardId).get().getSimNumber();
+            messageList = getMessagesFromServer(sim);
+        } catch (IOException e) {
+            e.printStackTrace();// TODO : handle
+        }
 
-	public List<AllBoardDTO> prepareBoardDetails(List<Board> allBoards){
-		List<AllBoardDTO> preparedBoardList = new ArrayList<>();
-		for(Board b:allBoards){
-			AllBoardDTO allBoardDTO = new AllBoardDTO();
-			allBoardDTO.setId(b.getId());
-			allBoardDTO.setBoardIdentity(b.getBoardIdentity());
-			allBoardDTO.setLocation(b.getLocation());
-			allBoardDTO.setStatus("Ok");  /*hard coded values*/
-			allBoardDTO.setLastWash("2019-May-21 14:00"); /*hard coded values*/
+        return messageList;
+    }
 
-			List<BoardWashDays> boardWashDaysList = boardWashDaysRepository.findByBoardId(b.getId());
+    @Override
+    public void addSms(String sim, String text) {
+        try {
+            URL url = new URL("http://localhost:8000/sendSms?sim=" + sim + "&msg=" + text);
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("GET");
+            int responseCode = connection.getResponseCode();
 
-			String dys = ""; int count = 1;
-			for(BoardWashDays washDays:boardWashDaysList){
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
-				dys += washDays.getDay();
-				if(count < boardWashDaysList.size()){
-					dys += ",";
-					count++;
-				}
-			}
-			allBoardDTO.setWashDateTime(b.getWashTime()+" "+dys);
-			preparedBoardList.add(allBoardDTO);
-		}
-		return preparedBoardList;
-	}
+   /* public static void main(String[] args) throws IOException {
+        BoardServiceImpl boardService = new BoardServiceImpl();
+        //((BoardServiceImpl) boardService).addSms("+0000000000", "banana");
+        boardService.;
+        System.out.println("hello");
+    }*/
+
+
+    private List<ViewMessageDTO> getMessagesFromServer(String sim) throws IOException {
+        URL url = new URL("http://localhost:8000/getMessages?sim=" + sim);
+        String readLine = null;
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        connection.setRequestMethod("GET");
+/*
+		connection.setRequestProperty("sim", sim); // set userId its a sample here
+*/
+        int responseCode = connection.getResponseCode();
+        List<String> response = new ArrayList<>();
+        if (responseCode == HttpURLConnection.HTTP_OK) {
+            BufferedReader in = new BufferedReader(
+                    new InputStreamReader(connection.getInputStream()));
+            while ((readLine = in.readLine()) != null) {
+                response.add(readLine);
+            }
+            in.close();
+            // print result
+            //GetAndPost.POSTRequest(response.toString());
+        } else {
+            System.out.println("GET NOT WORKED");
+        }
+        return getMessageDtoFromInputString(response);
+    }
+
+    private List<ViewMessageDTO> getMessageDtoFromInputString(List<String> inputLine) {
+        List<ViewMessageDTO> dtos = new ArrayList<>();
+        for (String s : inputLine) {
+            ViewMessageDTO viewMessageDTO = new ViewMessageDTO();
+            viewMessageDTO.setDateTime(s.split("@~")[0]);
+            viewMessageDTO.setMesage(s.split("@~")[1]);
+            dtos.add(viewMessageDTO);
+        }
+        return dtos;
+    }
+
+
+    public List<AllBoardDTO> prepareBoardDetails(List<Board> allBoards) {
+        List<AllBoardDTO> preparedBoardList = new ArrayList<>();
+        for (Board b : allBoards) {
+            AllBoardDTO allBoardDTO = new AllBoardDTO();
+            allBoardDTO.setId(b.getId());
+            allBoardDTO.setBoardIdentity(b.getBoardIdentity());
+            allBoardDTO.setLocation(b.getLocation());
+            allBoardDTO.setStatus("Ok");  /*hard coded values*/
+            allBoardDTO.setLastWash("2019-May-21 14:00"); /*hard coded values*/
+            //TODO:Get
+            List<BoardWashDays> boardWashDaysList = boardWashDaysRepository.findByBoardId(b.getId());
+
+            String dys = "";
+            int count = 1;
+            for (BoardWashDays washDays : boardWashDaysList) {
+
+                dys += washDays.getDay();
+                if (count < boardWashDaysList.size()) {
+                    dys += ",";
+                    count++;
+                }
+            }
+            allBoardDTO.setWashDateTime(b.getWashTime() + " " + dys);
+            preparedBoardList.add(allBoardDTO);
+        }
+        return preparedBoardList;
+    }
 
 
 }
