@@ -71,7 +71,7 @@ public class BoardServiceImpl implements BoardService {
         String h = savedBoard.getWashTime();
         String tz = "";
         try {
-            URL url = new URL("http://localhost:8000/set?s=" + s + "&d=" + d + "&h=" + h + "&tz=" + tz);
+            URL url = new URL("http://localhost:8000/set?s=" + s + "&d=" + d + "&h=" + h + "&tz=" + tz + "&o=s");
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
             connection.setRequestMethod("GET");
             int responseCode = connection.getResponseCode();
@@ -90,13 +90,13 @@ public class BoardServiceImpl implements BoardService {
             days += autoWashDaysDTO.getDay();
         }
 
-        ret += days.indexOf("sun") > 0 ? "1" : "0";
-        ret += days.indexOf("mon") > 0 ? "1" : "0";
-        ret += days.indexOf("tue") > 0 ? "1" : "0";
-        ret += days.indexOf("wed") > 0 ? "1" : "0";
-        ret += days.indexOf("thu") > 0 ? "1" : "0";
-        ret += days.indexOf("fri") > 0 ? "1" : "0";
-        ret += days.indexOf("sat") > 0 ? "1" : "0";
+        ret += days.indexOf("sun") > -1 ? "1" : "0";
+        ret += days.indexOf("mon") > -1 ? "1" : "0";
+        ret += days.indexOf("tue") > -1 ? "1" : "0";
+        ret += days.indexOf("wed") > -1 ? "1" : "0";
+        ret += days.indexOf("thu") > -1 ? "1" : "0";
+        ret += days.indexOf("fri") > -1 ? "1" : "0";
+        ret += days.indexOf("sat") > -1 ? "1" : "0";
         return ret;
     }
 
@@ -267,9 +267,6 @@ public class BoardServiceImpl implements BoardService {
         String readLine = null;
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
         connection.setRequestMethod("GET");
-/*
-		connection.setRequestProperty("sim", sim); // set userId its a sample here
-*/
         int responseCode = connection.getResponseCode();
         List<String> response = new ArrayList<>();
         if (responseCode == HttpURLConnection.HTTP_OK) {
@@ -301,13 +298,14 @@ public class BoardServiceImpl implements BoardService {
 
     public List<AllBoardDTO> prepareBoardDetails(List<Board> allBoards) {
         List<AllBoardDTO> preparedBoardList = new ArrayList<>();
+        Map<String, String> lastWashes = getLastWashForAllBoards();
         for (Board b : allBoards) {
             AllBoardDTO allBoardDTO = new AllBoardDTO();
             allBoardDTO.setId(b.getId());
             allBoardDTO.setBoardIdentity(b.getBoardIdentity());
             allBoardDTO.setLocation(b.getLocation());
-            allBoardDTO.setStatus("Ok");  /*hard coded values*/
-            allBoardDTO.setLastWash("2019-May-21 14:00"); /*hard coded values*/
+            allBoardDTO.setLastWash(lastWashes.get(b.getSimNumber()));
+            allBoardDTO.setStatus(allBoardDTO.getLastWash() == null ? "ERROR" : "OK");
             //TODO:Get
             List<BoardWashDays> boardWashDaysList = boardWashDaysRepository.findByBoardId(b.getId());
 
@@ -327,5 +325,31 @@ public class BoardServiceImpl implements BoardService {
         return preparedBoardList;
     }
 
+    private Map<String, String> getLastWashForAllBoards() {
+
+        Map<String, String> response = new HashMap<>();
+        try {
+            URL url = new URL("http://localhost:8000/getLastWashes");
+            String readLine = null;
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("GET");
+            int responseCode = connection.getResponseCode();
+            if (responseCode == HttpURLConnection.HTTP_OK) {
+                BufferedReader in = new BufferedReader(
+                        new InputStreamReader(connection.getInputStream()));
+                while ((readLine = in.readLine()) != null) {
+                    response.put(readLine.split("@~")[0], readLine.split("@~")[1]);
+                }
+                in.close();
+                // print result
+                //GetAndPost.POSTRequest(response.toString());
+            } else {
+                System.out.println("GET NOT WORKED");
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return response;
+    }
 
 }
