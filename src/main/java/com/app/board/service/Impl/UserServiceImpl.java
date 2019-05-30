@@ -26,7 +26,7 @@ public class UserServiceImpl implements UserService {
 
 	@Override
 	public User registerOrUpdateUser(UserRegistrationRequest request) {
-		User user = new User(request.getUserName(),request.getEmail(),request.getPhone(),request.getFirstName(),
+        User user = new User(request.getUserName(), request.getEmail().toLowerCase(), request.getPhone(), request.getFirstName(),
 				request.getLastName(),encoder.encode(request.getPassword()),request.getIsAdmin());
 		return userRepository.save(user);
 	}
@@ -41,7 +41,7 @@ public class UserServiceImpl implements UserService {
 				UserDetailDTO userDtl = new UserDetailDTO();
 				userDtl.setId(user.getId());
 				userDtl.setUserName(user.getUserName());
-				userDtl.setEmail(user.getEmail());
+                userDtl.setEmail(user.getEmail().toLowerCase());
 				userDtl.setFirstName(user.getFirstName());
 				userDtl.setLastName(user.getLastName());
 
@@ -68,12 +68,12 @@ public class UserServiceImpl implements UserService {
 	@Override
 	public UserDetailDTO getUserDetailsByEmail(String email) {
 		UserDetailDTO userDtl = new UserDetailDTO();
-		Optional<User> userObj = userRepository.findByEmail(email);
+        Optional<User> userObj = userRepository.findByEmail(email.toLowerCase());
 		if(userObj.isPresent()){
 			User user = userObj.get();
 			userDtl.setId(user.getId());
 			userDtl.setUserName(user.getUserName());
-			userDtl.setEmail(user.getEmail());
+            userDtl.setEmail(user.getEmail().toLowerCase());
 			userDtl.setFirstName(user.getFirstName());
 			userDtl.setLastName(user.getLastName());
 

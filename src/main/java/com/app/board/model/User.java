@@ -48,8 +48,8 @@ public class User {
 	}
 
 	public User(String userName, String email, String phone, String firstName, String lastName, String password,boolean isAdmin) {
-		this.userName = userName;
-		this.email = email;
+        this.userName = userName.toLowerCase();
+        this.email = email.toLowerCase();
 		this.phone = phone;
 		this.firstName = firstName;
 		this.lastName = lastName;
@@ -74,11 +74,11 @@ public class User {
 	}
 
 	public String getEmail() {
-		return email;
+        return email.toLowerCase();
 	}
 
 	public void setEmail(String email) {
-		this.email = email;
+        this.email = email.toLowerCase();
 	}
 
 	public Date getLastLogin() {
@@ -90,11 +90,11 @@ public class User {
 	}
 
 	public String getUserName() {
-		return userName;
+        return userName.toLowerCase();
 	}
 
 	public void setUserName(String userName) {
-		this.userName = userName;
+        this.userName = userName.toLowerCase();
 	}
 
 	public String getFirstName() {
@@ -151,7 +151,7 @@ public class User {
 			return true;
 		}
 		User person = (User) obj;
-		if (email != null ? !email.equals(person.email):person.email != null){
+        if (email != null ? !email.equalsIgnoreCase(person.email) : person.email != null) {
 			return false;
 		}else {
 			return true;

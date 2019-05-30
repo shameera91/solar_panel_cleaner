@@ -148,7 +148,7 @@ public class BoardServiceImpl implements BoardService {
 
 
         setBoardWashDays(board, autoWash);
-
+        informServerOfWashDays(board, autoWash);
     }
 
     private void setBoardUsers(Board board, AddBoardRequest request) {
