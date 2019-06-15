@@ -10,6 +10,9 @@ public class AllBoardDTO {
 	private String status;
 	private String washDateTime;
 	private String lastWash;
+	private int numberOfWashes;
+	private Integer waterPerWash;
+	private Double factor;
 
 	public Integer getBoardIdentity() {
 		return boardIdentity;
@@ -57,5 +60,29 @@ public class AllBoardDTO {
 
 	public void setId(Integer id) {
 		this.id = id;
+	}
+
+	public int getNumberOfWashes() {
+		return numberOfWashes;
+	}
+
+	public void setNumberOfWashes(int numberOfWashes) {
+		this.numberOfWashes = numberOfWashes;
+	}
+
+	public Integer getWaterPerWash() {
+		return waterPerWash;
+	}
+
+	public void setWaterPerWash(Integer waterPerWash) {
+		this.waterPerWash = waterPerWash;
+	}
+
+	public Double getFactor() {
+		return factor;
+	}
+
+	public void setFactor(Double factor) {
+		this.factor = factor;
 	}
 }

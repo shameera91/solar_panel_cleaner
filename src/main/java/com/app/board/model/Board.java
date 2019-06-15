@@ -22,6 +22,7 @@ public class Board {
 	private String washTime;
 
 	private Integer waterPerWash;
+    private Integer totalWaterUse;
 
 	@ManyToMany(fetch = FetchType.LAZY)
 	@JoinTable(name = "user_boards",joinColumns = @JoinColumn(name = "board_id"),inverseJoinColumns = @JoinColumn(name = "user_id"))
@@ -100,4 +101,12 @@ public class Board {
 	public void setLastWash(String lastWash) {
 		this.lastWash = lastWash;
 	}
+
+    public Integer getTotalWaterUse() {
+        return totalWaterUse;
+    }
+
+    public void setTotalWaterUse(Integer totalWaterUse) {
+        this.totalWaterUse = totalWaterUse;
+    }
 }

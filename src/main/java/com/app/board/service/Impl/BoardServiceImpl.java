@@ -25,6 +25,7 @@ import java.util.*;
 @Service
 public class BoardServiceImpl implements BoardService {
 
+    private static final Double WATER_PER_SPRINKLER = 1.5;
     @Autowired
     UserRepository userRepository;
 
@@ -279,7 +280,7 @@ public class BoardServiceImpl implements BoardService {
             // print result
             //GetAndPost.POSTRequest(response.toString());
         } else {
-            System.out.println("GET NOT WORKED");
+            System.out.println("can't get messages from server");
         }
         return getMessageDtoFromInputString(response);
     }
@@ -298,15 +299,15 @@ public class BoardServiceImpl implements BoardService {
 
     public List<AllBoardDTO> prepareBoardDetails(List<Board> allBoards) {
         List<AllBoardDTO> preparedBoardList = new ArrayList<>();
-        Map<String, String> lastWashes = getLastWashForAllBoards();
+        Map<String, WashDto> lastWashes = getLastWashForAllBoards();
         for (Board b : allBoards) {
             AllBoardDTO allBoardDTO = new AllBoardDTO();
             allBoardDTO.setId(b.getId());
             allBoardDTO.setBoardIdentity(b.getBoardIdentity());
             allBoardDTO.setLocation(b.getLocation());
-            allBoardDTO.setLastWash(lastWashes.get(b.getSimNumber()));
+            allBoardDTO.setLastWash(lastWashes.get(b.getSimNumber()) == null ? null : lastWashes.get(b.getSimNumber()).getWashTime());
             allBoardDTO.setStatus(allBoardDTO.getLastWash() == null ? "ERROR" : "OK");
-            //TODO:Get
+            allBoardDTO.setNumberOfWashes(lastWashes.get(b.getSimNumber()) == null ? 0 : lastWashes.get(b.getSimNumber()).getNumberOfWashes());
             List<BoardWashDays> boardWashDaysList = boardWashDaysRepository.findByBoardId(b.getId());
 
             String dys = "";
@@ -320,14 +321,16 @@ public class BoardServiceImpl implements BoardService {
                 }
             }
             allBoardDTO.setWashDateTime(b.getWashTime() + " " + dys);
+            allBoardDTO.setWaterPerWash(b.getWaterPerWash());
+            allBoardDTO.setFactor(WATER_PER_SPRINKLER);
             preparedBoardList.add(allBoardDTO);
         }
         return preparedBoardList;
     }
 
-    private Map<String, String> getLastWashForAllBoards() {
+    private Map<String, WashDto> getLastWashForAllBoards() {
 
-        Map<String, String> response = new HashMap<>();
+        Map<String, WashDto> response = new HashMap<>();
         try {
             URL url = new URL("http://localhost:8000/getLastWashes");
             String readLine = null;
@@ -338,7 +341,13 @@ public class BoardServiceImpl implements BoardService {
                 BufferedReader in = new BufferedReader(
                         new InputStreamReader(connection.getInputStream()));
                 while ((readLine = in.readLine()) != null) {
-                    response.put(readLine.split("@~")[0], readLine.split("@~")[1]);
+                    WashDto dto = new WashDto();
+                    String sim = readLine.split("@~")[0];
+                    String time = readLine.split("@~")[1];
+                    String totalWater = readLine.split("@~")[2];
+                    dto.setWashTime(time);
+                    dto.setNumberOfWashes(Integer.parseInt(totalWater));
+                    response.put(sim, dto);
                 }
                 in.close();
                 // print result
