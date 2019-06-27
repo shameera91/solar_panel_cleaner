@@ -84,23 +84,44 @@ public class BoardServiceImpl implements BoardService {
     }
 
     private String getDaysString(List<AutoWashDaysDTO> autoWashDays) {
-        String ret = "";
-        String days = "";
-
+        char[] days = {'0', '0', '0', '0', '0', '0', '0'};
         for (AutoWashDaysDTO autoWashDaysDTO : autoWashDays) {
-            days += autoWashDaysDTO.getDay();
+            String day = autoWashDaysDTO.getDay();
+            switch (day) {
+                case "sun":
+                    days[0] = autoWashDaysDTO.isSelected() ? '1' : '0';
+                    break;
+                case "mon":
+                    days[1] = autoWashDaysDTO.isSelected() ? '1' : '0';
+                    break;
+                case "tue":
+                    days[2] = autoWashDaysDTO.isSelected() ? '1' : '0';
+                    break;
+                case "wed":
+                    days[3] = autoWashDaysDTO.isSelected() ? '1' : '0';
+                    break;
+                case "thu":
+                    days[4] = autoWashDaysDTO.isSelected() ? '1' : '0';
+                    break;
+                case "fri":
+                    days[5] = autoWashDaysDTO.isSelected() ? '1' : '0';
+                    break;
+                case "sat":
+                    days[6] = autoWashDaysDTO.isSelected() ? '1' : '0';
+                    break;
+            }
         }
-
-        ret += days.indexOf("sun") > -1 ? "1" : "0";
-        ret += days.indexOf("mon") > -1 ? "1" : "0";
-        ret += days.indexOf("tue") > -1 ? "1" : "0";
-        ret += days.indexOf("wed") > -1 ? "1" : "0";
-        ret += days.indexOf("thu") > -1 ? "1" : "0";
-        ret += days.indexOf("fri") > -1 ? "1" : "0";
-        ret += days.indexOf("sat") > -1 ? "1" : "0";
-        return ret;
+        return String.valueOf(days);
     }
 
+
+    /* public static void main(String[] args) {
+         Calendar c = Calendar.getInstance();
+         c.add(Calendar.DAY_OF_WEEK,4);
+         int dayOfWeek = c.get(Calendar.DAY_OF_WEEK);
+         System.out.println(dayOfWeek + c.getDisplayName());
+     }
+ */
     @Override
     public List<AllBoardDTO> getBoards(Integer userId) {
         Optional<User> userById = userRepository.findById(userId);
@@ -308,6 +329,8 @@ public class BoardServiceImpl implements BoardService {
             allBoardDTO.setLastWash(lastWashes.get(b.getSimNumber()) == null ? null : lastWashes.get(b.getSimNumber()).getWashTime());
             allBoardDTO.setStatus(allBoardDTO.getLastWash() == null ? "ERROR" : "OK");
             allBoardDTO.setNumberOfWashes(lastWashes.get(b.getSimNumber()) == null ? 0 : lastWashes.get(b.getSimNumber()).getNumberOfWashes());
+            allBoardDTO.setPhone(b.getSimNumber());
+            allBoardDTO.setBoardName(b.getContactName());
             List<BoardWashDays> boardWashDaysList = boardWashDaysRepository.findByBoardId(b.getId());
 
             String dys = "";
