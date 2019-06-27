@@ -378,8 +378,9 @@ public class BoardServiceImpl implements BoardService {
             } else {
                 System.out.println("GET NOT WORKED");
             }
-        } catch (IOException e) {
-            e.printStackTrace();
+        } catch (Exception e) {
+            System.out.println("Cant connect to remoteOperate system");
+            ;
         }
         return response;
     }

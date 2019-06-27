@@ -28,6 +28,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import javax.validation.Valid;
 import java.net.URI;
 import java.util.Collections;
+import java.util.logging.Logger;
 
 /**
  * Created by Shameera on May, 2019
@@ -37,77 +38,84 @@ import java.util.Collections;
 @RequestMapping("/api/auth")
 public class AuthController {
 
-	@Autowired
-	AuthenticationManager authenticationManager;
+    @Autowired
+    AuthenticationManager authenticationManager;
 
-	@Autowired
-	UserRepository userRepository;
+    @Autowired
+    UserRepository userRepository;
 
-	@Autowired
-	RoleRepository roleRepository;
+    @Autowired
+    RoleRepository roleRepository;
 
-	@Autowired
-	PasswordEncoder passwordEncoder;
+    @Autowired
+    PasswordEncoder passwordEncoder;
 
-	@Autowired
-	JwtTokenProvider tokenProvider;
+    @Autowired
+    JwtTokenProvider tokenProvider;
 
-	@PostMapping("/signin")
-	public ResponseEntity<ApiResponse> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
-		ApiResponse response = new ApiResponse();
-		try{
-			Authentication authentication = authenticationManager.authenticate(
-					new UsernamePasswordAuthenticationToken(
-							loginRequest.getEmail(),
-							loginRequest.getPassword()
-					)
-			);
-			SecurityContextHolder.getContext().setAuthentication(authentication);
-			String jwt = tokenProvider.generateToken(authentication);
-			response.setData(new JwtAuthenticationResponse(jwt));
-			response.setError(false);
-			response.setMessage("Success");
-			return new ResponseEntity<>(response,HttpStatus.OK);
-		}catch (Exception e){
-			response.setError(true);
-			response.setMessage("Invalid credentials");
-			return new ResponseEntity<>(response,HttpStatus.OK);
-		}
-	}
+    private static final Logger LOGGER = Logger.getLogger(AuthController.class.getName());
 
-	@PostMapping("/signup")
-	public ResponseEntity<ApiResponse> registerUser(@Valid @RequestBody SignUpRequest signUpRequest) {
+    @PostMapping("/signin")
+    public ResponseEntity<ApiResponse> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
+        ApiResponse response = new ApiResponse();
+
+        try {
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(
+                            loginRequest.getEmail(),
+                            loginRequest.getPassword()
+                    )
+            );
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+            String jwt = tokenProvider.generateToken(authentication);
+            response.setData(new JwtAuthenticationResponse(jwt));
+            response.setError(false);
+            response.setMessage("Success");
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        } catch (Exception e) {
+            response.setError(true);
+            response.setMessage("Invalid credentials");
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        } finally {
+            LOGGER.warning("login attempt from user: " + loginRequest.getEmail() + " - " + response.getMessage());
+        }
+    }
+
+    @PostMapping("/signup")
+    public ResponseEntity<ApiResponse> registerUser(@Valid @RequestBody SignUpRequest signUpRequest) {
 		/*if(userRepository.existsByEmail(signUpRequest.getEmail())) {
 			return new ResponseEntity(new ApiResponse(false, "Username is already taken!"),
 					HttpStatus.BAD_REQUEST);
 		}*/
 
-		if(userRepository.existsByEmail(signUpRequest.getEmail())) {
-			ApiResponse response = new ApiResponse(true,"Email is already taken");
+        if (userRepository.existsByEmail(signUpRequest.getEmail())) {
+            ApiResponse response = new ApiResponse(true, "Email is already taken");
 			/*response.setError(true);
 			response.setMessage(HttpStatus.BAD_REQUEST.toString());*/
-			return new ResponseEntity<>(response,HttpStatus.OK);
-		}
+            LOGGER.warning("signup request failed : Email is already taken - " + signUpRequest.getEmail());
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        }
 
-		// Creating user's account
-		User user = new User(signUpRequest.getEmail(), signUpRequest.getPassword());
+        // Creating user's account
+        User user = new User(signUpRequest.getEmail(), signUpRequest.getPassword());
 
-		user.setPassword(passwordEncoder.encode(user.getPassword()));
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
 
-		Role userRole = roleRepository.findByName(RoleName.ROLE_USER).orElseThrow(() -> new AppException("User Role not set."));
+        Role userRole = roleRepository.findByName(RoleName.ROLE_USER).orElseThrow(() -> new AppException("User Role not set."));
 
-		user.setRoles(Collections.singleton(userRole));
+        user.setRoles(Collections.singleton(userRole));
 
-		User result = userRepository.save(user);
+        User result = userRepository.save(user);
 
-		URI location = ServletUriComponentsBuilder
-				.fromCurrentContextPath().path("/api/users/{email}")
-				.buildAndExpand(result.getEmail()).toUri();
+        URI location = ServletUriComponentsBuilder
+                .fromCurrentContextPath().path("/api/users/{email}")
+                .buildAndExpand(result.getEmail()).toUri();
 
-		ApiResponse response = new ApiResponse();
-		response.setError(false);
-		response.setMessage("User registered successfully");
+        ApiResponse response = new ApiResponse();
+        response.setError(false);
+        response.setMessage("User registered successfully");
+        LOGGER.warning("sighup request success " + signUpRequest.getEmail());
 
-		return ResponseEntity.created(location).body(response);
-	}
+        return ResponseEntity.created(location).body(response);
+    }
 }

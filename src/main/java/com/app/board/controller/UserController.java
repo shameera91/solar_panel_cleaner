@@ -7,8 +7,6 @@ import com.app.board.payload.UserDetailDTO;
 import com.app.board.payload.UserRegistrationRequest;
 import com.app.board.repository.UserRepository;
 import com.app.board.service.UserService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +15,10 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
 import java.util.Optional;
+import java.util.logging.Logger;
+
+import static com.app.board.controller.Util.getCurrentUser;
+
 
 /**
  * Created by Shameera on May, 2019
@@ -26,8 +28,8 @@ import java.util.Optional;
 @RequestMapping("/api")
 public class UserController {
 
-	private static final Logger logger = LoggerFactory.getLogger(UserController.class);
-
+	private static final Logger LOGGER = Logger.getLogger(UserController.class.getName());
+	
 	@Autowired
 	UserRepository userRepository;
 
@@ -65,6 +67,7 @@ public class UserController {
 				response.setMessage("No user found");
 			}
 		}
+		LOGGER.warning("request change Password for user : " + getCurrentUser() + ", response was:" + response.getMessage());
 		return ResponseEntity.ok(response);
 		}
 
