@@ -3,7 +3,7 @@ package com.app.board.payload;
 /**
  * Created by Shameera on May, 2019
  */
-public class AllBoardDTO {
+public class BoardDTO {
 	private Integer id;
 	private Integer boardIdentity;
 	private String location;

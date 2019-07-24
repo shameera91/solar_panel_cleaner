@@ -16,6 +16,8 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 /**
@@ -65,6 +67,8 @@ public class BoardServiceImpl implements BoardService {
         informServerOfWashDays(savedBoard, autoWashDays);
 
     }
+
+    SimpleDateFormat sdf = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
 
     private void informServerOfWashDays(Board savedBoard, List<AutoWashDaysDTO> autoWashDays) {
         String s = savedBoard.getSimNumber();
@@ -123,7 +127,7 @@ public class BoardServiceImpl implements BoardService {
      }
  */
     @Override
-    public List<AllBoardDTO> getBoards(Integer userId) {
+    public List<BoardDTO> getBoards(Integer userId) {
         Optional<User> userById = userRepository.findById(userId);
         if (userById.isPresent()) {
 
@@ -303,14 +307,17 @@ public class BoardServiceImpl implements BoardService {
         } else {
             System.out.println("can't get messages from server");
         }
-        return getMessageDtoFromInputString(response);
+        return getMessageDtoFromInputString(response, sim);
     }
 
-    private List<ViewMessageDTO> getMessageDtoFromInputString(List<String> inputLine) {
+    private List<ViewMessageDTO> getMessageDtoFromInputString(List<String> inputLine, String sim) {
         List<ViewMessageDTO> dtos = new ArrayList<>();
         for (String s : inputLine) {
             ViewMessageDTO viewMessageDTO = new ViewMessageDTO();
             viewMessageDTO.setDateTime(s.split("@~")[0]);
+            if (viewMessageDTO.getDateTime() != null) {
+                viewMessageDTO.setDateTime(fixTimeZone(viewMessageDTO.getDateTime(), sim));
+            }
             viewMessageDTO.setMesage(s.split("@~")[1]);
             dtos.add(viewMessageDTO);
         }
@@ -318,37 +325,123 @@ public class BoardServiceImpl implements BoardService {
     }
 
 
-    public List<AllBoardDTO> prepareBoardDetails(List<Board> allBoards) {
-        List<AllBoardDTO> preparedBoardList = new ArrayList<>();
+    public List<BoardDTO> prepareBoardDetails(List<Board> allBoards) {
+        List<BoardDTO> preparedBoardList = new ArrayList<>();
         Map<String, WashDto> lastWashes = getLastWashForAllBoards();
         for (Board b : allBoards) {
-            AllBoardDTO allBoardDTO = new AllBoardDTO();
-            allBoardDTO.setId(b.getId());
-            allBoardDTO.setBoardIdentity(b.getBoardIdentity());
-            allBoardDTO.setLocation(b.getLocation());
-            allBoardDTO.setLastWash(lastWashes.get(b.getSimNumber()) == null ? null : lastWashes.get(b.getSimNumber()).getWashTime());
-            allBoardDTO.setStatus(allBoardDTO.getLastWash() == null ? "ERROR" : "OK");
-            allBoardDTO.setNumberOfWashes(lastWashes.get(b.getSimNumber()) == null ? 0 : lastWashes.get(b.getSimNumber()).getNumberOfWashes());
-            allBoardDTO.setPhone(b.getSimNumber());
-            allBoardDTO.setBoardName(b.getContactName());
+            BoardDTO boardDTO = new BoardDTO();
+            boardDTO.setId(b.getId());
+            boardDTO.setBoardIdentity(b.getBoardIdentity());
+            boardDTO.setLocation(b.getLocation());
+            boardDTO.setLastWash(lastWashes.get(b.getSimNumber()) == null ? null : lastWashes.get(b.getSimNumber()).getWashTime());
+            boardDTO.setLastWash(fixTimeZone(boardDTO.getLastWash(), b.getSimNumber()));
+            boardDTO.setStatus(getBoardStatus(b, boardDTO.getLastWash()));
+            boardDTO.setNumberOfWashes(lastWashes.get(b.getSimNumber()) == null ? 0 : lastWashes.get(b.getSimNumber()).getNumberOfWashes());
+            boardDTO.setPhone(b.getSimNumber());
+            boardDTO.setBoardName(b.getContactName());
             List<BoardWashDays> boardWashDaysList = boardWashDaysRepository.findByBoardId(b.getId());
 
-            String dys = "";
+            String days = "";
             int count = 1;
             for (BoardWashDays washDays : boardWashDaysList) {
 
-                dys += washDays.getDay();
+                days += washDays.getDay();
                 if (count < boardWashDaysList.size()) {
-                    dys += ",";
+                    days += ",";
                     count++;
                 }
             }
-            allBoardDTO.setWashDateTime(b.getWashTime() + " " + dys);
-            allBoardDTO.setWaterPerWash(b.getWaterPerWash());
-            allBoardDTO.setFactor(WATER_PER_SPRINKLER);
-            preparedBoardList.add(allBoardDTO);
+            boardDTO.setWashDateTime(b.getWashTime() + " " + days);
+            boardDTO.setWaterPerWash(b.getWaterPerWash());
+            boardDTO.setFactor(WATER_PER_SPRINKLER);
+            preparedBoardList.add(boardDTO);
         }
         return preparedBoardList;
+    }
+
+    private String fixTimeZone(String lastWash, String phone) {
+        if (null != phone && phone.startsWith("+972")) return lastWash;
+        try {
+            Calendar calendar = getLastWashCal(lastWash);
+            calendar.add(Calendar.HOUR_OF_DAY, -4);
+            return sdf.format(calendar.getTime());
+
+        } catch (Exception e) {
+            return lastWash;
+        }
+    }
+
+    private String getBoardStatus(Board b, String lastWash) {
+        if (null == lastWash || lastWash.isEmpty()) return "ERROR";
+        // if (!(null == lastWash || lastWash.isEmpty())) return "OK";
+        List<BoardWashDays> boardWashDaysList = boardWashDaysRepository.findByBoardId(b.getId());
+        if (noWashesDefined(boardWashDaysList)) return "OK";
+
+        Calendar now = Calendar.getInstance();
+        Calendar lastWashCal = getLastWashCal(lastWash);
+        Calendar aWeekAgo = Calendar.getInstance();
+        aWeekAgo.add(Calendar.WEEK_OF_MONTH, -1);
+        if (lastWashCal.before(aWeekAgo))
+            return "ERROR";  // washes are scheduled, but last one was more than a week ago
+
+        int hourNow = now.get(Calendar.HOUR_OF_DAY);
+        int minNow = now.get(Calendar.MINUTE);
+        int washHour = Integer.parseInt(b.getWashTime().substring(0, 2));
+        int washMin = Integer.parseInt(b.getWashTime().substring(3, 5));
+        String daysScheduledToWash = getWashDays(boardWashDaysList);
+        if (washHour > hourNow || (washHour == hourNow && washMin > minNow)) {
+            now.add(Calendar.DAY_OF_MONTH, -1);
+        }
+        now.set(Calendar.HOUR_OF_DAY, washHour);
+        now.set(Calendar.MINUTE, washMin);
+        now.add(Calendar.MINUTE, -10); //checking 10 mins before, in case of clock differances
+        for (int i = 0; i < 7; i++) {
+            String dayNow = now.getDisplayName(Calendar.DAY_OF_WEEK, Calendar.SHORT, Locale.US).toLowerCase();
+            if (itWasSupposedToWork(dayNow, daysScheduledToWash)) {
+                if (now.after(lastWashCal)) return "ERROR"; //supposed to work but didnt
+                else return "OK";
+            }
+            now.add(Calendar.DAY_OF_MONTH, -1);
+        }
+
+        return "OK";
+    }
+
+    private boolean itWasSupposedToWork(String dayNow, String daysScheduledToWash) {
+        return daysScheduledToWash.contains(dayNow);
+    }
+
+    private String getWashDays(List<BoardWashDays> boardWashDaysList) {
+        String daysScheduledToWash = "";
+
+        for (BoardWashDays day : boardWashDaysList) {
+            if (day.getIsSelected()) {
+                daysScheduledToWash += day.getDay();
+            }
+        }
+        return daysScheduledToWash;
+    }
+
+    private boolean noWashesDefined(List<BoardWashDays> boardWashDaysList) {
+        if (boardWashDaysList.size() == 0) return true; // no days defined?
+        boolean noDays = true;
+        for (BoardWashDays day : boardWashDaysList) {
+            if (day.getIsSelected()) noDays = false;
+        }
+        // no days selected
+        return noDays;
+    }
+
+    private Calendar getLastWashCal(String lastWash) {
+        Date date = null;
+        try {
+            date = sdf.parse(lastWash);
+        } catch (ParseException e) {
+            // Logger.getLogger(BoardServiceImpl.class)
+        }
+        Calendar lastWashCal = Calendar.getInstance();
+        lastWashCal.setTime(date);
+        return lastWashCal;
     }
 
     private Map<String, WashDto> getLastWashForAllBoards() {
@@ -385,4 +478,8 @@ public class BoardServiceImpl implements BoardService {
         return response;
     }
 
+    public static void main(String[] args) {
+        int washMin = Integer.parseInt("10:31".substring(3, 5));
+        System.out.println(washMin);
+    }
 }

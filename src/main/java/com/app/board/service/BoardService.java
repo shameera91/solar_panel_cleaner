@@ -2,7 +2,7 @@ package com.app.board.service;
 
 import com.app.board.model.Board;
 import com.app.board.payload.AddBoardRequest;
-import com.app.board.payload.AllBoardDTO;
+import com.app.board.payload.BoardDTO;
 import com.app.board.payload.BoardDetailDTO;
 import com.app.board.payload.ViewMessageDTO;
 
@@ -20,7 +20,7 @@ public interface BoardService {
 
 	void saveBoard(AddBoardRequest request);
 
-	List<AllBoardDTO> getBoards(Integer userId);
+    List<BoardDTO> getBoards(Integer userId);
 
 	void editBoard(Board board,AddBoardRequest request);
 

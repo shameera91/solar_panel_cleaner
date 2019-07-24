@@ -23,7 +23,7 @@ import static com.app.board.controller.Util.getCurrentUser;
 public class BoardController {
 
     private static final Logger LOGGER = Logger.getLogger(BoardController.class.getName());
-    private static final String WASH_NOW_TEXT = "CID";
+    private static final String WASH_NOW_TEXT = "p.1234relay.3s";
     private static final String COMM_CHECK_TEXT = "P.1234RECEP";
 
 	@Autowired
@@ -150,7 +150,7 @@ public class BoardController {
 	@GetMapping("/getBoards/{userId}")
 	public ResponseEntity<?> getBoards(@PathVariable Integer userId){
 		ApiResponse response = new ApiResponse();
-		List<AllBoardDTO> boards = boardService.getBoards(userId);
+        List<BoardDTO> boards = boardService.getBoards(userId);
 		response.setError(false);
 		response.setMessage("Success");
 		response.setData(boards);
