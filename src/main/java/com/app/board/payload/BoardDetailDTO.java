@@ -18,6 +18,24 @@ public class BoardDetailDTO {
 	private Integer waterPerWash;
 	private Set<User> users;
 	private List<AutoWashDaysDTO> autoWashDays;
+	private String lon;
+	private String lat;
+
+	public String getLon() {
+		return lon;
+	}
+
+	public void setLon(String lon) {
+		this.lon = lon;
+	}
+
+	public String getLat() {
+		return lat;
+	}
+
+	public void setLat(String lat) {
+		this.lat = lat;
+	}
 
 	public Integer getBoardIdentity() {
 		return boardIdentity;

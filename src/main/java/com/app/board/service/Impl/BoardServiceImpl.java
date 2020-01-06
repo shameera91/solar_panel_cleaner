@@ -57,6 +57,8 @@ public class BoardServiceImpl implements BoardService {
         board.setSimNumber(request.getSimNumber());
         board.setWashTime(request.getWashTime());
         board.setWaterPerWash(request.getWaterPerWash());
+        board.setLon(request.getLon());
+        board.setLat(request.getLat());
 
         setBoardUsers(board, request);
 
@@ -166,6 +168,8 @@ public class BoardServiceImpl implements BoardService {
         setBoardUsers(board, request);
         board.setWashTime(request.getWashTime());
         board.setWaterPerWash(request.getWaterPerWash());
+        board.setLon(request.getLon());
+        board.setLat(request.getLat());
         boardRepository.save(board);
 
         List<AutoWashDaysDTO> autoWash = request.getAutoWashDays();
@@ -218,27 +222,8 @@ public class BoardServiceImpl implements BoardService {
         detailDTO.setWashTime(boardById.getWashTime());
         detailDTO.setWaterPerWash(boardById.getWaterPerWash());
         detailDTO.setUsers(boardById.getUsers());
-        //AddBoardRequest boardDetails = new AddBoardRequest();
-
-		/*boardDetails.setBoardIdentity(boardById.getBoardIdentity());
-		boardDetails.setContactName(boardById.getContactName());
-		boardDetails.setLocation(boardById.getLocation());
-		boardDetails.setSimNumber(boardById.getSimNumber());
-		boardDetails.setWashTime(boardById.getWashTime());
-		boardDetails.setWaterPerWash(boardById.getWaterPerWash());*/
-
-        //Set<User> users = boardById.getUsers();
-
-		/*Integer []boardIds= new Integer[users.size()]; int i=0;
-		if(!users.isEmpty()){
-			for (User u : users){
-				boardIds[i] = u.getId();
-				i++;
-			}
-		}*/
-
-        //boardDetails.setUsers(boardIds);
-
+        detailDTO.setLat(boardById.getLat());
+        detailDTO.setLon(boardById.getLon());
         List<BoardWashDays> boardWashDaysList = boardWashDaysRepository.findByBoardId(boardById.getId());
 
         List<AutoWashDaysDTO> autoList = new ArrayList<>();
@@ -339,6 +324,8 @@ public class BoardServiceImpl implements BoardService {
             boardDTO.setNumberOfWashes(lastWashes.get(b.getSimNumber()) == null ? 0 : lastWashes.get(b.getSimNumber()).getNumberOfWashes());
             boardDTO.setPhone(b.getSimNumber());
             boardDTO.setBoardName(b.getContactName());
+            boardDTO.setLat(b.getLat());
+            boardDTO.setLon(b.getLon());
             List<BoardWashDays> boardWashDaysList = boardWashDaysRepository.findByBoardId(b.getId());
 
             String days = "";

@@ -15,6 +15,25 @@ public class BoardDTO {
 	private Double factor;
     private String boardName;
 
+	public String getLon() {
+		return lon;
+	}
+
+	public void setLon(String lon) {
+		this.lon = lon;
+	}
+
+	public String getLat() {
+		return lat;
+	}
+
+	public void setLat(String lat) {
+		this.lat = lat;
+	}
+
+	private String lon;
+	private String lat;
+
     public String getBoardName() {
         return boardName;
     }
@@ -105,3 +124,6 @@ public class BoardDTO {
 		this.factor = factor;
 	}
 }
+
+
+
