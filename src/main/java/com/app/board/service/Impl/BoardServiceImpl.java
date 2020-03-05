@@ -381,10 +381,11 @@ public class BoardServiceImpl implements BoardService {
         }
         now.set(Calendar.HOUR_OF_DAY, washHour);
         now.set(Calendar.MINUTE, washMin);
-        now.add(Calendar.MINUTE, -10); //checking 10 mins before, in case of clock differances
+        // now.add(Calendar.MINUTE, -241); //checking 241 mins before, in case of clock differances
         for (int i = 0; i < 7; i++) {
             String dayNow = now.getDisplayName(Calendar.DAY_OF_WEEK, Calendar.SHORT, Locale.US).toLowerCase();
             if (itWasSupposedToWork(dayNow, daysScheduledToWash)) {
+                lastWashCal.add(Calendar.HOUR_OF_DAY, 1); //reducing 1 hour to prevent the 2 minutes bug
                 if (now.after(lastWashCal)) return "ERROR"; //supposed to work but didnt
                 else return "OK";
             }

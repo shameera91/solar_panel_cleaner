@@ -162,9 +162,14 @@ public class BoardController {
 	public ResponseEntity<?> addBoard(@RequestBody AddBoardRequest request){
 		ApiResponse response = new ApiResponse();
 		try {
-			boardService.saveBoard(request);
-			response.setMessage("Success");
-			response.setError(false);
+			if (boardService.getBoardByIdentification(request.getBoardIdentity()).isPresent()) {
+				response.setMessage("Board id already exist");
+				response.setError(true);
+			} else {
+				boardService.saveBoard(request);
+				response.setMessage("Success");
+				response.setError(false);
+			}
 		}catch (Exception e){
 			response.setMessage("Board adding error");
 			response.setError(true);

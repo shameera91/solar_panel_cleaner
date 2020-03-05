@@ -33,9 +33,19 @@ public class UserServiceImpl implements UserService {
 
 	@Override
 	public List<UserDetailDTO> getAllUsersExceptLoggedInUser(Integer id) {
-
-		List<User> allUsers = userRepository.findAll();
+		User thisUser = userRepository.findOne(id);
 		List<UserDetailDTO> arrangedList = new ArrayList<>();
+		if (!thisUser.isAdmin()) {
+			UserDetailDTO userDtl = new UserDetailDTO();
+			userDtl.setId(thisUser.getId());
+			userDtl.setUserName(thisUser.getUserName());
+			userDtl.setEmail(thisUser.getEmail().toLowerCase());
+			userDtl.setFirstName(thisUser.getFirstName());
+			userDtl.setLastName(thisUser.getLastName());
+			arrangedList.add(userDtl);
+			return arrangedList;
+		}
+		List<User> allUsers = userRepository.findAll();
 		for (User user:allUsers){
 			if(!(user.getId() == id)){
 				UserDetailDTO userDtl = new UserDetailDTO();
