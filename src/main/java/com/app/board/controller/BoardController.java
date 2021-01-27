@@ -1,11 +1,17 @@
 package com.app.board.controller;
 
 import com.app.board.model.Board;
+import com.app.board.model.User;
 import com.app.board.payload.*;
+import com.app.board.repository.UserRepository;
+import com.app.board.security.UserPrincipal;
 import com.app.board.service.BoardService;
 import com.app.board.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -24,6 +30,7 @@ public class BoardController {
 
     private static final Logger LOGGER = Logger.getLogger(BoardController.class.getName());
 	private static final String WASH_NOW_TEXT = "CID";
+    //USA - relay3s
     private static final String COMM_CHECK_TEXT = "P.1234RECEP";
 
 	@Autowired
@@ -31,6 +38,9 @@ public class BoardController {
 
 	@Autowired
 	BoardService boardService;
+
+    @Autowired
+    UserRepository userRepository;
 
 	@PostMapping("/requestCommCheck/{boardId}")
     public ResponseEntity<?> requestCommCheck(@PathVariable Integer boardId){
@@ -119,7 +129,19 @@ public class BoardController {
     public ResponseEntity<?> deleteBoard(@PathVariable Integer boardId) {
 		ApiResponse response = new ApiResponse();
         Optional<Board> boardById = boardService.getBoardById(boardId);
-		if(boardById.isPresent()) {
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        if (principal instanceof UserDetails) {
+            String username = ((UserPrincipal) principal).getEmail();
+
+            Optional<User> thisUser = userRepository.findByEmail(username);
+
+            if (!thisUser.get().isAdmin()) {
+                response.setError(true);
+                response.setMessage("Board can be deleted by Admin only.");
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+            }
+        }
+        if (boardById.isPresent()) {
             boardService.deleteBoard(boardById.get(), boardId);
 			response.setError(false);
 			response.setMessage("Success");

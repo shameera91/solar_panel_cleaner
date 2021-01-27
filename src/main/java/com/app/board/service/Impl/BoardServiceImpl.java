@@ -347,7 +347,7 @@ public class BoardServiceImpl implements BoardService {
     }
 
     private String fixTimeZone(String lastWash, String phone) {
-        if (null != phone && phone.startsWith("+972")) return lastWash;
+        if (1 == 1) return lastWash;
         try {
             Calendar calendar = getLastWashCal(lastWash);
             calendar.add(Calendar.HOUR_OF_DAY, -4);
@@ -365,9 +365,13 @@ public class BoardServiceImpl implements BoardService {
         if (noWashesDefined(boardWashDaysList)) return "OK";
 
         Calendar now = Calendar.getInstance();
+        //USA now.add(Calendar.HOUR,-10);
+
         Calendar lastWashCal = getLastWashCal(lastWash);
         Calendar aWeekAgo = Calendar.getInstance();
         aWeekAgo.add(Calendar.WEEK_OF_MONTH, -1);
+        //USA  aWeekAgo.add(Calendar.HOUR,-10);
+
         if (lastWashCal.before(aWeekAgo))
             return "ERROR";  // washes are scheduled, but last one was more than a week ago
 
@@ -428,7 +432,8 @@ public class BoardServiceImpl implements BoardService {
             // Logger.getLogger(BoardServiceImpl.class)
         }
         Calendar lastWashCal = Calendar.getInstance();
-        lastWashCal.setTime(date);
+        //USA-        Calendar lastWashCal = Calendar.getInstance(TimeZone.getTimeZone("GMT-7"));
+        lastWashCal.setTime(date); //USA - REMARK OUT
         return lastWashCal;
     }
 
